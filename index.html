@@ -182,21 +182,46 @@
       if(backBtn) backBtn.textContent = C.textos.voltar;
       if(musicUnlock) musicUnlock.textContent = C.textos.ativarMusica;
 
-      // Telas ligáveis/desligáveis
+      // Telas e áreas clicáveis ligáveis/desligáveis
       const hasVideo = !!C.telas.video;
-      const hasGift = !!C.telas.presentes;
-      const giftBtn = document.getElementById("giftBtn");
-      if(!hasGift && giftBtn) giftBtn.style.display = "none";
+      const hasGiftScreen = !!C.telas.presentes;
 
-      // Hotspots (com override opcional do localStorage, para o editor)
-      const STORAGE_KEY = "convite-hotspots-v1";
-      const buttons = {
+      // Um botão só existe quando sua chave também existe em CONFIG.hotspots.
+      // Assim, retirar "map", "gift" ou "confirm" do config.js remove de verdade
+      // a área clicável, sem alterar a arte.
+      const enabledHotspots = {
+        confirm: Object.prototype.hasOwnProperty.call(C.hotspots, "confirm"),
+        map: Object.prototype.hasOwnProperty.call(C.hotspots, "map"),
+        gift: hasGiftScreen && Object.prototype.hasOwnProperty.call(C.hotspots, "gift")
+      };
+
+      const rawButtons = {
         confirm: document.getElementById("confirmBtn"),
         map: document.getElementById("mapBtn"),
         gift: document.getElementById("giftBtn")
       };
+
+      Object.entries(rawButtons).forEach(([key, el])=>{
+        if(el && !enabledHotspots[key]) el.remove();
+      });
+
+      const buttons = {
+        confirm: enabledHotspots.confirm ? document.getElementById("confirmBtn") : null,
+        map: enabledHotspots.map ? document.getElementById("mapBtn") : null,
+        gift: enabledHotspots.gift ? document.getElementById("giftBtn") : null
+      };
+
+      // Hotspots (com override opcional do localStorage, para o editor).
+      // O navegador só pode restaurar chaves que ainda existem no config.js;
+      // portanto uma posição antiga de "map" não volta sozinha.
+      const STORAGE_KEY = "convite-hotspots-v1";
       let HOTSPOTS = JSON.parse(JSON.stringify(C.hotspots));
-      try { HOTSPOTS = Object.assign({}, HOTSPOTS, JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}")); } catch(e){}
+      try {
+        const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+        Object.keys(HOTSPOTS).forEach(key=>{
+          if(saved[key]) HOTSPOTS[key] = saved[key];
+        });
+      } catch(e){}
 
       function applyHotspots(){
         Object.entries(HOTSPOTS).forEach(([key,v])=>{
@@ -212,7 +237,7 @@
         const list = ["opening"];
         if(hasVideo) list.push("videoScreen");
         list.push("mainScreen");
-        if(hasGift) list.push("giftScreen");
+        if(enabledHotspots.gift) list.push("giftScreen");
         return list.map($);
       };
       const screens = buildScreens();
@@ -339,20 +364,26 @@
       }
 
       // ---- BOTÕES DA TELA PRINCIPAL --------------------------------------
-      $("confirmBtn").addEventListener("click", (e)=>{
-        if(document.body.classList.contains("editor-on")) return;
-        e.preventDefault(); e.stopPropagation();
-        const num = (C.whatsapp.numero || "").replace(/\D/g,"");
-        const msg = encodeURIComponent(C.whatsapp.mensagem || "");
-        window.open("https://wa.me/" + num + "?text=" + msg, "_blank");
-      });
-      $("mapBtn").addEventListener("click", (e)=>{
-        if(document.body.classList.contains("editor-on")) return;
-        e.preventDefault(); e.stopPropagation();
-        window.open(C.mapa || "#", "_blank");
-      });
-      if(hasGift){
-        $("giftBtn").addEventListener("click", (e)=>{
+      if(buttons.confirm){
+        buttons.confirm.addEventListener("click", (e)=>{
+          if(document.body.classList.contains("editor-on")) return;
+          e.preventDefault(); e.stopPropagation();
+          const num = (C.whatsapp.numero || "").replace(/\D/g,"");
+          const msg = encodeURIComponent(C.whatsapp.mensagem || "");
+          window.open("https://wa.me/" + num + "?text=" + msg, "_blank");
+        });
+      }
+
+      if(buttons.map){
+        buttons.map.addEventListener("click", (e)=>{
+          if(document.body.classList.contains("editor-on")) return;
+          e.preventDefault(); e.stopPropagation();
+          window.open(C.mapa || "#", "_blank");
+        });
+      }
+
+      if(buttons.gift){
+        buttons.gift.addEventListener("click", (e)=>{
           if(document.body.classList.contains("editor-on")) return;
           e.preventDefault(); e.stopPropagation();
           show("giftScreen");
@@ -371,21 +402,34 @@
       // ====================================================================
       // EDITOR VISUAL (?editor=1) — arrasta os botões e copia p/ o config.js
       // ====================================================================
+      // Mantém no seletor do editor apenas as áreas realmente configuradas.
+      const areaSelect = $("areaSelect");
+      Array.from(areaSelect.options).forEach(option=>{
+        if(!enabledHotspots[option.value]) option.remove();
+      });
+
       applyHotspots();
       const params = new URLSearchParams(location.search);
-      let selected = "confirm";
+      const firstEnabledHotspot = Object.keys(buttons).find(key=>buttons[key]);
+      let selected = firstEnabledHotspot || "";
 
-      function openEditor(){ show("mainScreen"); document.body.classList.add("editor-on","can-edit"); selectArea(selected); }
+      function openEditor(){
+        show("mainScreen");
+        document.body.classList.add("editor-on","can-edit");
+        if(selected) selectArea(selected);
+      }
       function closeEditor(){ document.body.classList.remove("editor-on"); }
       $("editOpen").addEventListener("click", openEditor);
       $("closeEditor").addEventListener("click", closeEditor);
       if(params.has("editor")) openEditor();
-      $("areaSelect").addEventListener("change", e=>selectArea(e.target.value));
+      areaSelect.addEventListener("change", e=>selectArea(e.target.value));
 
       function selectArea(key){
-        selected = key; $("areaSelect").value = key;
-        Object.values(buttons).forEach(b=>b.classList.remove("selected"));
-        if(buttons[key]) buttons[key].classList.add("selected");
+        if(!buttons[key]) return;
+        selected = key;
+        areaSelect.value = key;
+        Object.values(buttons).forEach(b=>{ if(b) b.classList.remove("selected"); });
+        buttons[key].classList.add("selected");
         fillInputs();
       }
       function fillInputs(){
@@ -394,6 +438,7 @@
         $("inpW").value = v.width; $("inpH").value = v.height;
       }
       ["inpL","inpT","inpW","inpH"].forEach(id=>$(id).addEventListener("input",()=>{
+        if(!selected || !buttons[selected]) return;
         HOTSPOTS[selected] = {left:+$("inpL").value, top:+$("inpT").value, width:+$("inpW").value, height:+$("inpH").value};
         applyHotspots();
       }));
@@ -432,7 +477,8 @@
       $("resetAreas").addEventListener("click",()=>{
         HOTSPOTS = JSON.parse(JSON.stringify(C.hotspots));
         localStorage.removeItem(STORAGE_KEY);
-        applyHotspots(); fillInputs();
+        applyHotspots();
+        if(selected) fillInputs();
       });
       // Gera código pronto para colar dentro de CONFIG.hotspots no config.js
       function exportAreas(){
