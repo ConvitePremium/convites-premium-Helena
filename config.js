@@ -21,15 +21,15 @@ window.CONFIG = {
   // ----- IDENTIDADE DO CONVITE -------------------------------------------
   // Nome do aniversariante. Aparece no título da aba do navegador e nos
   // textos automáticos do convite.
-  nome: "Maya",
+  nome: "Helena",
 
   // ----- WHATSAPP (CONFIRMAR PRESENÇA) -----------------------------------
   // numero: DDI + DDD + número, SÓ DÍGITOS (sem +, espaço, parênteses ou traço).
   //         Ex.: 55 (Brasil) + 31 (DDD) + 985657116 -> "5531985657116"
   // mensagem: texto que já vem pré-preenchido quando a pessoa abre o WhatsApp.
   whatsapp: {
-    numero: "5581994815258",
-    mensagem: "Olá! Confirmo minha presença no aniversário da Maya."
+    numero: "5534996755872",
+    mensagem: "Olá! Confirmo minha presença no aniversário da Helena."
   },
 
   // ----- LOCALIZAÇÃO (BOTÃO MAPA) ----------------------------------------
@@ -77,13 +77,6 @@ window.CONFIG = {
       top: 81.40964012432231,
       width: 21.2793265096246,
       height: 16.572808420977253
-    },
-
-    map: {
-      left: 15.340967388138388,
-      top: 81.4096443071042,
-      width: 20.11034417739611,
-      height: 16.463160976786646
     },
 
     gift: {
